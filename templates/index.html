@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Translate API</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Translate Text</h1>
+        <form id="translate-form">
+            <div class="mb-3">
+                <label for="text-input" class="form-label">Text to Translate</label>
+                <textarea id="text-input" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="source-language-select" class="form-label">Select Source Language</label>
+                <select id="source-language-select" class="form-select"></select>
+            </div>
+            <div class="mb-3">
+                <label for="target-language-select" class="form-label">Select Target Language</label>
+                <select id="target-language-select" class="form-select"></select>
+            </div>
+        </form>
+
+        <h2 class="mt-5">Translation Result</h2>
+        <p id="translation-result"></p>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $.getJSON('/get_languages', function (data) {
+                const sourceLangSelect = $('#source-language-select');
+                const targetLangSelect = $('#target-language-select');
+                data.forEach(function (lang) {
+                    sourceLangSelect.append(new Option(lang.name, lang.code));
+                    targetLangSelect.append(new Option(lang.name, lang.code));
+                });
+            });
+
+            function debounce(func, delay) {
+                let timer;
+                return function(...args) {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => func.apply(this, args), delay);
+                };
+            }
+
+            function performTranslation() {
+                const text = $('#text-input').val();
+                const sourceLang = $('#source-language-select').val();
+                const targetLang = $('#target-language-select').val();
+
+                if (!text || !sourceLang || !targetLang) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '/translate',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        text: text,
+                        source_lang: sourceLang,
+                        target_lang: targetLang
+                    }),
+                    success: function (data) {
+                        if (data.error) {
+                            $('#translation-result').text('Translation failed');
+                        } else {
+                            $('#translation-result').text(data.translatedText || 'Translation unavailable');
+                        }
+                    },
+                    error: function () {
+                        $('#translation-result').text('Error in translation process');
+                    }
+                });
+            }
+
+            const debouncedTranslation = debounce(performTranslation, 250);
+
+            $('#text-input').on('input', debouncedTranslation);
+
+            $('#source-language-select, #target-language-select').on('change', debouncedTranslation);
+        });
+    </script>
+</body>
+</html>
